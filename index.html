@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>עוזר הניווט לנהג - השלמה אוטומטית</title>
+    <title>מערכת ניהול משימות וניווט לנהג</title>
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
@@ -11,7 +11,7 @@
             position: absolute;
             z-index: 50;
             width: 100%;
-            max-height: 200px;
+            max-height: 150px;
             overflow-y: auto;
             background: white;
             border: 1px solid #d1d5db;
@@ -20,10 +20,11 @@
             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
         }
         .suggestion-item {
-            padding: 10px;
+            padding: 8px 12px;
             cursor: pointer;
             border-bottom: 1px solid #f3f4f6;
             text-align: right;
+            font-size: 0.875rem;
         }
         .suggestion-item:hover {
             background-color: #f3f4f6;
@@ -33,52 +34,71 @@
 <body class="bg-gray-100 font-sans min-h-screen flex flex-col">
 
     <header class="bg-blue-600 text-white shadow-md p-4 text-center">
-        <h1 class="text-xl font-bold"><i class="fas fa-route ml-2"></i>מנהל מסלולים עם השלמת כתובות</h1>
+        <h1 class="text-xl font-bold"><i class="fas fa-tasks ml-2"></i>האפליקציה הפרטית שלי לניהול קווי נסיעה</h1>
     </header>
 
-    <main class="flex-1 p-4 max-w-md mx-auto w-full">
+    <main class="flex-1 p-4 max-w-md mx-auto w-full pb-12">
+        
         <div class="bg-white p-4 rounded-xl shadow-md mb-4">
-            <h2 class="text-md font-semibold mb-3 text-gray-700">הזן כתובות (הראשונה היא המוצא):</h2>
+            <h2 class="text-md font-semibold mb-3 text-gray-700">הזן נקודות עצירה ומשימות להיום:</h2>
             
             <div id="address-container" class="space-y-4">
                 <div class="address-block bg-gray-50 p-3 rounded-lg border border-gray-200 relative">
-                    <span class="text-xs font-bold text-green-600 block mb-1">📍 נקודת מוצא (מאיפה מתחילים?)</span>
-                    <div class="grid grid-cols-3 gap-2">
+                    <span class="text-xs font-bold text-green-600 block mb-1">📍 נקודת מוצא (תחילת יום)</span>
+                    <div class="grid grid-cols-3 gap-2 mb-2">
                         <input type="text" placeholder="עיר" class="city-in p-2 border rounded bg-white text-sm">
-                        <input type="text" placeholder="רחוב" class="street-in p-2 border rounded bg-white text-sm col-span-1">
+                        <input type="text" placeholder="רחוב" class="street-in p-2 border rounded bg-white text-sm">
                         <input type="text" placeholder="מספר" class="num-in p-2 border rounded bg-white text-sm">
                     </div>
                     <input type="hidden" class="full-address">
                     <div class="suggestions-list hidden"></div>
+                    
+                    <div class="grid grid-cols-3 gap-2">
+                        <input type="text" placeholder="מה עושים כאן? (משימה)" class="task-in p-2 border rounded bg-white text-xs col-span-2">
+                        <input type="number" placeholder="זמן המתנה (דקות)" class="wait-in p-2 border rounded bg-white text-xs">
+                    </div>
                 </div>
 
                 <div class="address-block bg-gray-50 p-3 rounded-lg border border-gray-200 relative">
                     <span class="text-xs font-bold text-blue-600 block mb-1">🛑 עצירה 1</span>
-                    <div class="grid grid-cols-3 gap-2">
+                    <div class="grid grid-cols-3 gap-2 mb-2">
                         <input type="text" placeholder="עיר" class="city-in p-2 border rounded bg-white text-sm">
-                        <input type="text" placeholder="רחוב" class="street-in p-2 border rounded bg-white text-sm col-span-1">
+                        <input type="text" placeholder="רחוב" class="street-in p-2 border rounded bg-white text-sm">
                         <input type="text" placeholder="מספר" class="num-in p-2 border rounded bg-white text-sm">
                     </div>
                     <input type="hidden" class="full-address">
                     <div class="suggestions-list hidden"></div>
+                    
+                    <div class="grid grid-cols-3 gap-2">
+                        <input type="text" placeholder="מה עושים כאן? (משימה)" class="task-in p-2 border rounded bg-white text-xs col-span-2">
+                        <input type="number" placeholder="זמן המתנה (דקות)" class="wait-in p-2 border rounded bg-white text-xs">
+                    </div>
                 </div>
             </div>
             
             <button onclick="addAddressBlock()" class="mt-4 w-full bg-gray-200 text-gray-700 font-medium py-2 rounded-lg hover:bg-gray-300 transition flex justify-center items-center gap-2">
-                <i class="fas fa-plus-circle"></i> הוסף עוד עצירה
+                <i class="fas fa-plus-circle"></i> הוסף עוד תחנה ומשימה
             </button>
         </div>
 
-        <button onclick="launchFullRoute()" class="w-full bg-green-600 text-white font-bold py-4 rounded-xl shadow-lg hover:bg-green-700 transition flex flex-col justify-center items-center gap-1 text-lg">
-            <span class="flex items-center gap-2"><i class="fas fa-map-marked-alt"></i> פתח מסלול מלא בגוגל מפס</span>
-            <span class="text-xs font-normal text-green-100">(כולל זמני נסיעה וסידור תחנות)</span>
+        <button onclick="generateInternalRoute()" class="w-full bg-green-600 text-white font-bold py-3.5 rounded-xl shadow-lg hover:bg-green-700 transition flex justify-center items-center gap-2 text-lg">
+            <i class="fas fa-calendar-check"></i> צור דוח משימות ומסלול יומי
         </button>
+
+        <div id="internal-report" class="hidden mt-6 bg-white p-4 rounded-xl shadow-md border border-gray-200">
+            <div class="border-b pb-3 mb-4 flex justify-between items-center">
+                <h2 class="text-lg font-bold text-gray-800"><i class="fas fa-clipboard-list ml-2 text-blue-600"></i>לוח העבודה היומי שלך:</h2>
+                <span id="total-wait-badge" class="bg-yellow-100 text-yellow-800 text-xs font-bold px-2.5 py-1 rounded-full"></span>
+            </div>
+            
+            <div id="report-list" class="space-y-4">
+                </div>
+        </div>
     </main>
 
     <script>
         let blockCount = 1;
 
-        // פונקציה להוספת בלוק כתובת חדש (עיר, רחוב, מספר)
         function addAddressBlock() {
             blockCount++;
             const container = document.getElementById('address-container');
@@ -86,19 +106,23 @@
             newBlock.className = 'address-block bg-gray-50 p-3 rounded-lg border border-gray-200 relative';
             newBlock.innerHTML = `
                 <span class="text-xs font-bold text-blue-600 block mb-1">🛑 עצירה ${blockCount}</span>
-                <div class="grid grid-cols-3 gap-2">
+                <div class="grid grid-cols-3 gap-2 mb-2">
                     <input type="text" placeholder="עיר" class="city-in p-2 border rounded bg-white text-sm">
-                    <input type="text" placeholder="רחוב" class="street-in p-2 border rounded bg-white text-sm col-span-1">
+                    <input type="text" placeholder="רחוב" class="street-in p-2 border rounded bg-white text-sm">
                     <input type="text" placeholder="מספר" class="num-in p-2 border rounded bg-white text-sm">
                 </div>
                 <input type="hidden" class="full-address">
                 <div class="suggestions-list hidden"></div>
+                
+                <div class="grid grid-cols-3 gap-2">
+                    <input type="text" placeholder="מה עושים כאן? (משימה)" class="task-in p-2 border rounded bg-white text-xs col-span-2">
+                    <input type="number" placeholder="זמן המתנה (דקות)" class="wait-in p-2 border rounded bg-white text-xs">
+                </div>
             `;
             container.appendChild(newBlock);
             setupAutocompleteForBlock(newBlock);
         }
 
-        // הגדרת החיפוש האוטומטי לכל בלוק
         function setupAutocompleteForBlock(block) {
             const cityInput = block.querySelector('.city-in');
             const streetInput = block.querySelector('.street-in');
@@ -108,18 +132,14 @@
 
             let timeout = null;
 
-            // מאזין להקלדה בשדות העיר והרחוב
             [cityInput, streetInput, numInput].forEach(input => {
                 input.addEventListener('input', () => {
                     clearTimeout(timeout);
-                    
-                    // נחכה רבע שנייה אחרי שהמשתמש מפסיק להקליד כדי לא להעמיס
                     timeout = setTimeout(async () => {
                         const city = cityInput.value.trim();
                         const street = streetInput.value.trim();
                         const num = numInput.value.trim();
                         
-                        // עדכון הכתובת המשולבת כברירת מחדל
                         hiddenInput.value = `${street} ${num} ${city}`.trim();
 
                         if (city.length < 2 && street.length < 2) {
@@ -127,11 +147,10 @@
                             return;
                         }
 
-                        // בניית שאילתת חיפוש
                         const searchQuery = `${street} ${num} ${city} ישראל`.trim();
                         
                         try {
-                            const response = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(searchQuery)}&lang=txt&limit=5`);
+                            const response = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(searchQuery)}&lang=txt&limit=4`);
                             const data = await response.json();
                             
                             if (data.features && data.features.length > 0) {
@@ -140,7 +159,6 @@
 
                                 data.features.forEach(feature => {
                                     const p = feature.properties;
-                                    // סינון ובניית הכתובת בעברית בצורה יפה
                                     let formatted = "";
                                     if (p.street) formatted += p.street + " ";
                                     if (p.housenumber) formatted += p.housenumber + ", ";
@@ -153,12 +171,11 @@
                                     item.className = 'suggestion-item';
                                     item.innerText = formatted;
                                     
-                                    // בלחיצה על הצעה מהרשימה
                                     item.addEventListener('click', () => {
                                         cityInput.value = p.city || p.name || "";
                                         streetInput.value = p.street || "";
                                         numInput.value = p.housenumber || "";
-                                        hiddenInput.value = formatted; // שמירת הכתובת המלאה והתקנית
+                                        hiddenInput.value = formatted;
                                         suggestionsList.classList.add('hidden');
                                     });
 
@@ -168,54 +185,82 @@
                                 suggestionsList.classList.add('hidden');
                             }
                         } catch (e) {
-                            console.error("שגיאה בטעינת הכתובות", e);
+                            console.error(e);
                         }
                     }, 300);
                 });
             });
 
-            // סגירת הרשימה אם לוחצים מחוץ לבלוק
             document.addEventListener('click', (e) => {
-                if (!block.contains(e.target)) {
-                    suggestionsList.classList.add('hidden');
-                }
+                if (!block.contains(e.target)) suggestionsList.classList.add('hidden');
             });
         }
 
-        // הפעלת האוטוקומפליט על הבלוקים הקיימים בהתחלה
         document.querySelectorAll('.address-block').forEach(block => setupAutocompleteForBlock(block));
 
-        function launchFullRoute() {
-            const hiddens = document.querySelectorAll('.full-address');
-            let addresses = [];
+        // בניית הדוח הפנימי של האפליקציה שלך
+        function generateInternalRoute() {
+            const blocks = document.querySelectorAll('.address-block');
+            const reportDiv = document.getElementById('internal-report');
+            const reportList = document.getElementById('report-list');
+            const totalWaitBadge = document.getElementById('total-wait-badge');
             
-            hiddens.forEach(input => {
-                if(input.value.trim() !== "") {
-                    addresses.push(input.value.trim());
-                }
+            reportList.innerHTML = '';
+            let totalWaitTime = 0;
+            let validStopsCount = 0;
+
+            blocks.forEach((block, index) => {
+                const fullAddress = block.querySelector('.full-address').value.trim();
+                const task = block.querySelector('.task-in').value.trim() || "לא הוגדרה משימה";
+                const waitTime = parseInt(block.querySelector('.wait-in').value) || 0;
+
+                if (fullAddress === "") return; // דילוג על בלוקים ריקים
+                validStopsCount++;
+                totalWaitTime += waitTime;
+
+                const encodedAddress = encodeURIComponent(fullAddress);
+                const wazeUrl = `waze://?q=${encodedAddress}&navigate=yes`;
+                const googleMapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodedAddress}`;
+
+                const card = document.createElement('div');
+                card.className = 'p-3 rounded-lg border-l-4 bg-gray-50 flex flex-col gap-2 shadow-xs ' + (index === 0 ? 'border-green-500' : 'border-blue-500');
+                
+                card.innerHTML = `
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <span class="text-xs font-bold px-2 py-0.5 rounded text-white ${index === 0 ? 'bg-green-600' : 'bg-blue-600'}">
+                                ${index === 0 ? 'מוצא' : 'תחנה ' + index}
+                            </span>
+                            <p class="font-bold text-gray-800 text-sm mt-1">${fullAddress}</p>
+                        </div>
+                        ${waitTime > 0 ? `<span class="text-xs text-red-600 font-bold bg-red-50 px-1.5 py-0.5 rounded"><i class="fas fa-hourglass-half ml-1"></i>${waitTime} דק' המתנה</span>` : ''}
+                    </div>
+                    
+                    <div class="bg-white p-2 rounded border border-gray-100 text-xs text-gray-700">
+                        <span class="font-bold text-gray-500 block text-[10px] uppercase">משימה לביצוע:</span>
+                        <p class="mt-0.5 font-medium">${task}</p>
+                    </div>
+
+                    <div class="flex justify-end gap-2 mt-1">
+                        <a href="${wazeUrl}" class="bg-cyan-500 text-white px-2.5 py-1 rounded text-xs font-bold flex items-center gap-1">
+                            <i class="fab fa-waze"></i> סע ב-Waze
+                        </a>
+                        <a href="${googleMapsUrl}" target="_blank" class="bg-red-500 text-white px-2.5 py-1 rounded text-xs font-bold flex items-center gap-1">
+                            <i class="fas fa-map-marker-alt"></i> Google Maps
+                        </a>
+                    </div>
+                `;
+                reportList.appendChild(card);
             });
 
-            if (addresses.length < 2) {
-                alert("אנא הזן לפחות 2 כתובות כדי לבנות מסלול");
+            if (validStopsCount < 1) {
+                alert("אנא הכנס לפחות כתובת אחת כדי ליצור דוח עבודה");
                 return;
             }
 
-            const origin = encodeURIComponent(addresses[0]);
-            const destination = encodeURIComponent(addresses[addresses.length - 1]);
-            
-            let waypoints = [];
-            if (addresses.length > 2) {
-                for (let i = 1; i < addresses.length - 1; i++) {
-                    waypoints.push(encodeURIComponent(addresses[i]));
-                }
-            }
-
-            let googleMapsUrl = `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}`;
-            if (waypoints.length > 0) {
-                googleMapsUrl += `&waypoints=${waypoints.join('|')}`;
-            }
-
-            window.open(googleMapsUrl, '_blank');
+            totalWaitBadge.innerHTML = `<i class="fas fa-clock ml-1"></i> סה"כ זמן המתנה בלקוחות: ${totalWaitTime} דקות`;
+            reportDiv.classList.remove('hidden');
+            reportDiv.scrollIntoView({ behavior: 'smooth' });
         }
     </script>
 </body>
