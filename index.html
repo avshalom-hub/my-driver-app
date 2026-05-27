@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>מערכת ניהול משימות וניווט לנהג</title>
+    <title>מערכת ניהול משימות וזמני נסיעה לנהג</title>
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
@@ -34,7 +34,7 @@
 <body class="bg-gray-100 font-sans min-h-screen flex flex-col">
 
     <header class="bg-blue-600 text-white shadow-md p-4 text-center">
-        <h1 class="text-xl font-bold"><i class="fas fa-tasks ml-2"></i>האפליקציה הפרטית שלי לניהול קווי נסיעה</h1>
+        <h1 class="text-xl font-bold"><i class="fas fa-calculator ml-2"></i>אפליקציית נהג חכמה עם זמני נסיעה</h1>
     </header>
 
     <main class="flex-1 p-4 max-w-md mx-auto w-full pb-12">
@@ -51,7 +51,7 @@
                         <input type="text" placeholder="מספר" class="num-in p-2 border rounded bg-white text-sm">
                     </div>
                     <input type="hidden" class="full-address">
-                    <div class="suggestions-list hidden"></div>
+                    <input type="hidden" class="coords"> <div class="suggestions-list hidden"></div>
                     
                     <div class="grid grid-cols-3 gap-2">
                         <input type="text" placeholder="מה עושים כאן? (משימה)" class="task-in p-2 border rounded bg-white text-xs col-span-2">
@@ -67,6 +67,7 @@
                         <input type="text" placeholder="מספר" class="num-in p-2 border rounded bg-white text-sm">
                     </div>
                     <input type="hidden" class="full-address">
+                    <input type="hidden" class="coords">
                     <div class="suggestions-list hidden"></div>
                     
                     <div class="grid grid-cols-3 gap-2">
@@ -81,17 +82,17 @@
             </button>
         </div>
 
-        <button onclick="generateInternalRoute()" class="w-full bg-green-600 text-white font-bold py-3.5 rounded-xl shadow-lg hover:bg-green-700 transition flex justify-center items-center gap-2 text-lg">
-            <i class="fas fa-calendar-check"></i> צור דוח משימות ומסלול יומי
+        <button onclick="generateCalculatedRoute()" id="calc-btn" class="w-full bg-green-600 text-white font-bold py-3.5 rounded-xl shadow-lg hover:bg-green-700 transition flex justify-center items-center gap-2 text-lg">
+            <i class="fas fa-calculator"></i> חשב זמני נסיעה וצור לו"ז
         </button>
 
         <div id="internal-report" class="hidden mt-6 bg-white p-4 rounded-xl shadow-md border border-gray-200">
-            <div class="border-b pb-3 mb-4 flex justify-between items-center">
-                <h2 class="text-lg font-bold text-gray-800"><i class="fas fa-clipboard-list ml-2 text-blue-600"></i>לוח העבודה היומי שלך:</h2>
-                <span id="total-wait-badge" class="bg-yellow-100 text-yellow-800 text-xs font-bold px-2.5 py-1 rounded-full"></span>
+            <div class="border-b pb-3 mb-4">
+                <h2 class="text-lg font-bold text-gray-800 mb-2"><i class="fas fa-clipboard-list ml-2 text-blue-600"></i>סיכום יום העבודה המחושב:</h2>
+                <div id="total-summary-box" class="text-xs bg-blue-50 text-blue-800 p-2.5 rounded-lg font-bold space-y-1"></div>
             </div>
             
-            <div id="report-list" class="space-y-4">
+            <div id="report-list" class="space-y-4 relative">
                 </div>
         </div>
     </main>
@@ -112,6 +113,7 @@
                     <input type="text" placeholder="מספר" class="num-in p-2 border rounded bg-white text-sm">
                 </div>
                 <input type="hidden" class="full-address">
+                <input type="hidden" class="coords">
                 <div class="suggestions-list hidden"></div>
                 
                 <div class="grid grid-cols-3 gap-2">
@@ -128,6 +130,7 @@
             const streetInput = block.querySelector('.street-in');
             const numInput = block.querySelector('.num-in');
             const hiddenInput = block.querySelector('.full-address');
+            const coordsInput = block.querySelector('.coords');
             const suggestionsList = block.querySelector('.suggestions-list');
 
             let timeout = null;
@@ -159,6 +162,7 @@
 
                                 data.features.forEach(feature => {
                                     const p = feature.properties;
+                                    const coords = feature.geometry.coordinates; // [lon, lat]
                                     let formatted = "";
                                     if (p.street) formatted += p.street + " ";
                                     if (p.housenumber) formatted += p.housenumber + ", ";
@@ -176,6 +180,7 @@
                                         streetInput.value = p.street || "";
                                         numInput.value = p.housenumber || "";
                                         hiddenInput.value = formatted;
+                                        coordsInput.value = `${coords[0]},${coords[1]}`; // שמירת נקודות ציון
                                         suggestionsList.classList.add('hidden');
                                     });
 
@@ -198,69 +203,130 @@
 
         document.querySelectorAll('.address-block').forEach(block => setupAutocompleteForBlock(block));
 
-        // בניית הדוח הפנימי של האפליקציה שלך
-        function generateInternalRoute() {
+        // הפונקציה המרכזית שמחשבת זמני נסיעה אמיתיים מהמפות
+        async function generateCalculatedRoute() {
+            const btn = document.getElementById('calc-btn');
             const blocks = document.querySelectorAll('.address-block');
             const reportDiv = document.getElementById('internal-report');
             const reportList = document.getElementById('report-list');
-            const totalWaitBadge = document.getElementById('total-wait-badge');
+            const summaryBox = document.getElementById('total-summary-box');
             
-            reportList.innerHTML = '';
-            let totalWaitTime = 0;
-            let validStopsCount = 0;
-
-            blocks.forEach((block, index) => {
-                const fullAddress = block.querySelector('.full-address').value.trim();
+            let stopsData = [];
+            blocks.forEach((block) => {
+                const addr = block.querySelector('.full-address').value.trim();
+                const coords = block.querySelector('.coords').value.trim();
                 const task = block.querySelector('.task-in').value.trim() || "לא הוגדרה משימה";
-                const waitTime = parseInt(block.querySelector('.wait-in').value) || 0;
+                const wait = parseInt(block.querySelector('.wait-in').value) || 0;
 
-                if (fullAddress === "") return; // דילוג על בלוקים ריקים
-                validStopsCount++;
-                totalWaitTime += waitTime;
-
-                const encodedAddress = encodeURIComponent(fullAddress);
-                const wazeUrl = `waze://?q=${encodedAddress}&navigate=yes`;
-                const googleMapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodedAddress}`;
-
-                const card = document.createElement('div');
-                card.className = 'p-3 rounded-lg border-l-4 bg-gray-50 flex flex-col gap-2 shadow-xs ' + (index === 0 ? 'border-green-500' : 'border-blue-500');
-                
-                card.innerHTML = `
-                    <div class="flex justify-between items-start">
-                        <div>
-                            <span class="text-xs font-bold px-2 py-0.5 rounded text-white ${index === 0 ? 'bg-green-600' : 'bg-blue-600'}">
-                                ${index === 0 ? 'מוצא' : 'תחנה ' + index}
-                            </span>
-                            <p class="font-bold text-gray-800 text-sm mt-1">${fullAddress}</p>
-                        </div>
-                        ${waitTime > 0 ? `<span class="text-xs text-red-600 font-bold bg-red-50 px-1.5 py-0.5 rounded"><i class="fas fa-hourglass-half ml-1"></i>${waitTime} דק' המתנה</span>` : ''}
-                    </div>
-                    
-                    <div class="bg-white p-2 rounded border border-gray-100 text-xs text-gray-700">
-                        <span class="font-bold text-gray-500 block text-[10px] uppercase">משימה לביצוע:</span>
-                        <p class="mt-0.5 font-medium">${task}</p>
-                    </div>
-
-                    <div class="flex justify-end gap-2 mt-1">
-                        <a href="${wazeUrl}" class="bg-cyan-500 text-white px-2.5 py-1 rounded text-xs font-bold flex items-center gap-1">
-                            <i class="fab fa-waze"></i> סע ב-Waze
-                        </a>
-                        <a href="${googleMapsUrl}" target="_blank" class="bg-red-500 text-white px-2.5 py-1 rounded text-xs font-bold flex items-center gap-1">
-                            <i class="fas fa-map-marker-alt"></i> Google Maps
-                        </a>
-                    </div>
-                `;
-                reportList.appendChild(card);
+                if (addr !== "" && coords !== "") {
+                    stopsData.push({ addr, coords, task, wait });
+                }
             });
 
-            if (validStopsCount < 1) {
-                alert("אנא הכנס לפחות כתובת אחת כדי ליצור דוח עבודה");
+            if (stopsData.length < 2) {
+                alert("אנא הזן לפחות 2 כתובות מלאות שנבחרו מהרשימה כדי לחשב זמני נסיעה!");
                 return;
             }
 
-            totalWaitBadge.innerHTML = `<i class="fas fa-clock ml-1"></i> סה"כ זמן המתנה בלקוחות: ${totalWaitTime} דקות`;
-            reportDiv.classList.remove('hidden');
-            reportDiv.scrollIntoView({ behavior: 'smooth' });
+            btn.disabled = true;
+            btn.innerHTML = `<i class="fas fa-spinner animate-spin"></i> מודד זמני נסיעה מהמפות...`;
+            reportList.innerHTML = '';
+
+            // יצירת מחרוזת נקודות ציון עבור השרת (lon,lat;lon,lat...)
+            const coordsString = stopsData.map(s => s.coords).join(';');
+            const url = `https://router.project-osrm.org/route/v1/driving/${coordsString}?overview=false`;
+
+            try {
+                const response = await fetch(url);
+                const data = await response.json();
+
+                if (data.code !== "Ok") {
+                    throw new Error("לא ניתן היה לחשב זמני נסיעה בין הכתובות האלו.");
+                }
+
+                const legs = data.routes[0].legs; // מכיל את המרחקים והזמנים בין כל זוג תחנות
+                let totalDriveTimeSec = 0;
+                let totalDistanceMeters = 0;
+                let totalWaitMins = 0;
+
+                stopsData.forEach((stop, index) => {
+                    totalWaitMins += stop.wait;
+                    const encodedAddress = encodeURIComponent(stop.addr);
+                    const wazeUrl = `waze://?q=${encodedAddress}&navigate=yes`;
+                    const googleMapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodedAddress}`;
+
+                    // אם זו לא התחנה הראשונה, נציג את זמן הנסיעה שלקח להגיע אליה מהתחנה הקודמת
+                    if (index > 0) {
+                        const leg = legs[index - 1];
+                        const driveTimeMin = Math.round(leg.duration / 60);
+                        const distanceKm = (leg.distance / 1000).toFixed(1);
+
+                        totalDriveTimeSec += leg.duration;
+                        totalDistanceMeters += leg.distance;
+
+                        const timeDivider = document.createElement('div');
+                        timeDivider.className = 'my-2 flex justify-center items-center gap-2 text-xs font-bold text-blue-600 bg-blue-50 py-1.5 rounded-lg border border-blue-200';
+                        timeDivider.innerHTML = `<i class="fas fa-car animate-pulse"></i> <span>🚙 ${driveTimeMin} דקות נסיעה (${distanceKm} ק"מ) ⬇️</span>`;
+                        reportList.appendChild(timeDivider);
+                    }
+
+                    const card = document.createElement('div');
+                    card.className = 'p-3 rounded-lg border-r-4 bg-gray-50 flex flex-col gap-2 shadow-xs ' + (index === 0 ? 'border-green-500' : 'border-blue-500');
+                    
+                    card.innerHTML = `
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <span class="text-xs font-bold px-2 py-0.5 rounded text-white ${index === 0 ? 'bg-green-600' : 'bg-blue-600'}">
+                                    ${index === 0 ? 'מוצא (נקודת יציאה)' : 'תחנה ' + index}
+                                </span>
+                                <p class="font-bold text-gray-800 text-sm mt-1">${stop.addr}</p>
+                            </div>
+                            ${stop.wait > 0 ? `<span class="text-xs text-red-600 font-bold bg-red-50 px-1.5 py-0.5 rounded"><i class="fas fa-hourglass-half ml-1"></i>${stop.wait} דק' עיכוב בלקוח</span>` : ''}
+                        </div>
+                        
+                        <div class="bg-white p-2 rounded border border-gray-100 text-xs text-gray-700">
+                            <span class="font-bold text-gray-400 block text-[10px]">מה עושים כאן:</span>
+                            <p class="mt-0.5 font-medium">${stop.task}</p>
+                        </div>
+
+                        <div class="flex justify-end gap-2 mt-1">
+                            <a href="${wazeUrl}" class="bg-cyan-500 text-white px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1">
+                                <i class="fab fa-waze"></i> Waze
+                            </a>
+                            <a href="${googleMapsUrl}" target="_blank" class="bg-red-500 text-white px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1">
+                                <i class="fas fa-map-marker-alt"></i> Google Maps
+                            </a>
+                        </div>
+                    `;
+                    reportList.appendChild(card);
+                });
+
+                // חישוב סיכום יומי כולל
+                const totalDriveTimeMins = Math.round(totalDriveTimeSec / 60);
+                const totalDayMinutes = totalDriveTimeMins + totalWaitMins;
+                const totalHours = Math.floor(totalDayMinutes / 60);
+                const totalMins = totalDayMinutes % 60;
+                const totalKm = (totalDistanceMeters / 1000).toFixed(1);
+
+                summaryBox.innerHTML = `
+                    <p><i class="fas fa-road ml-1.5 text-blue-500"></i> מרחק נסיעה כולל: <span class="font-extrabold">${totalKm} ק"מ</span></p>
+                    <p><i class="fas fa-car ml-1.5 text-blue-500"></i> נטו זמן על הכביש: <span class="font-extrabold">${totalDriveTimeMins} דקות נסיעה</span></p>
+                    <p><i class="fas fa-hourglass-end ml-1.5 text-blue-500"></i> סך הכל עיכובים אצל לקוחות: <span class="font-extrabold">${totalWaitMins} דקות</span></p>
+                    <div class="border-t pt-1.5 mt-1.5 text-sm text-green-700 flex justify-between">
+                        <span>🕒 סה"כ זמן עבודה מוערך להיום:</span>
+                        <span class="font-extrabold">${totalHours > 0 ? totalHours + ' שעות ו-' : ''}${totalMins} דקות</span>
+                    </div>
+                `;
+
+                reportDiv.classList.remove('hidden');
+                reportDiv.scrollIntoView({ behavior: 'smooth' });
+
+            } catch (error) {
+                alert("תקלה בחישוב זמני נסיעה: " + error.message + "\nשים לב שחובה לבחור את הכתובות מתוך הרשימה שנפתחת בזמן ההקלדה!");
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = `<i class="fas fa-calculator"></i> חשב זמני נסיעה וצור לו"ז`;
+            }
         }
     </script>
 </body>
