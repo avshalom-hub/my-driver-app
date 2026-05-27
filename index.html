@@ -3,22 +3,23 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>עוזר הניווט לנהג</title>
+    <title>עוזר הניווט לנהג - מסלול מלא</title>
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body class="bg-gray-100 font-sans min-h-screen flex flex-col">
 
     <header class="bg-blue-600 text-white shadow-md p-4 text-center">
-        <h1 class="text-xl font-bold"><i class="fas fa-route ml-2"></i>אופטימיזציית מסלול לנהג</h1>
+        <h1 class="text-xl font-bold"><i class="fas fa-route ml-2"></i>מנהל מסלולים רב-תחנות</h1>
     </header>
 
     <main class="flex-1 p-4 max-w-md mx-auto w-full">
         <div class="bg-white p-4 rounded-xl shadow-md mb-4">
-            <h2 class="text-md font-semibold mb-3 text-gray-700">הוסף כתובות למסלול:</h2>
+            <h2 class="text-md font-semibold mb-3 text-gray-700">הזן את כל הכתובות של היום:</h2>
             <div id="address-container" class="space-y-2">
-                <input type="text" placeholder="כתובת מוצא (למשל: מחסן)" class="address-input w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <input type="text" placeholder="נקודת מוצא (מאיפה מתחילים?)" class="address-input w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
                 <input type="text" placeholder="עצירה 1" class="address-input w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <input type="text" placeholder="עצירה 2" class="address-input w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
             </div>
             
             <button onclick="addAddressField()" class="mt-3 w-full bg-gray-200 text-gray-700 font-medium py-2 rounded-lg hover:bg-gray-300 transition flex justify-center items-center gap-2">
@@ -26,31 +27,29 @@
             </button>
         </div>
 
-        <button onclick="optimizeRoute()" class="w-full bg-green-600 text-white font-bold py-3 rounded-xl shadow-lg hover:bg-green-700 transition flex justify-center items-center gap-2 text-lg">
-            <i class="fas fa-magic"></i>חשב את המסלול הטוב ביותר
+        <button onclick="launchFullRoute()" class="w-full bg-green-600 text-white font-bold py-4 rounded-xl shadow-lg hover:bg-green-700 transition flex flex-col justify-center items-center gap-1 text-lg">
+            <span class="flex items-center gap-2"><i class="fas fa-map-marked-alt"></i> פתח מסלול מלא בגוגל מפס</span>
+            <span class="text-xs font-normal text-green-100">(כולל זמני נסיעה וסידור תחנות עם האצבע)</span>
         </button>
 
-        <div id="route-result" class="hidden mt-6">
-            <h2 class="text-lg font-bold mb-3 text-gray-800">המסלול המיועל שלך:</h2>
-            <div id="route-list" class="space-y-3">
-                </div>
+        <div class="mt-6 bg-yellow-50 border-r-4 border-yellow-500 p-4 rounded-lg text-sm text-gray-700 shadow-sm">
+            <p class="font-bold mb-1"><i class="fas fa-info-circle ml-1"></i> איך זה עובד?</p>
+            <p>בלחיצה על הכפתור, כל התחנות ייפתחו יחד בתוך אפליקציית המפות. שם תוכל לראות את זמני הנסיעה הכוללים, ולגרור את התחנות כדי לשנות את הסדר לפי מה שהכי מהיר לך!</p>
         </div>
     </main>
 
     <script>
-        // פונקציה להוספת שדה כתובת נוסף באופן דינמי
         function addAddressField() {
             const container = document.getElementById('address-container');
             const inputCount = container.getElementsByTagName('input').length;
             const newInput = document.createElement('input');
             newInput.type = 'text';
-            newInput.placeholder = `עצירה ${inputCount}`;
+            newInput.placeholder = `עצירה ${inputCount - 1}`;
             newInput.className = 'address-input w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500';
             container.appendChild(newInput);
         }
 
-        // סימולציה של אופטימיזציה 
-        function optimizeRoute() {
+        function launchFullRoute() {
             const inputs = document.querySelectorAll('.address-input');
             let addresses = [];
             
@@ -61,48 +60,30 @@
             });
 
             if (addresses.length < 2) {
-                alert("אנא הזן לפחות 2 כתובות (מוצא ויעד)");
+                alert("אנא הזן לפחות 2 כתובות כדי לבנות מסלול");
                 return;
             }
 
-            displayOptimizedRoute(addresses);
-        }
+            const origin = encodeURIComponent(addresses[0]);
+            const destination = encodeURIComponent(addresses[addresses.length - 1]);
+            
+            // איסוף כל התחנות שבאמצע (עצירות ביניים)
+            let waypoints = [];
+            if (addresses.length > 2) {
+                for (let i = 1; i < addresses.length - 1; i++) {
+                    waypoints.push(encodeURIComponent(addresses[i]));
+                }
+            }
 
-        // הצגת המסלול לנהג עם כפתורי הניווט החיצוניים
-        function displayOptimizedRoute(route) {
-            const resultDiv = document.getElementById('route-result');
-            const listDiv = document.getElementById('route-list');
-            listDiv.innerHTML = ''; 
+            // בניית קישור עמוק מיוחד לגוגל מפס שמכיל את כל העצירות בבת אחת
+            let googleMapsUrl = `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}`;
+            
+            if (waypoints.length > 0) {
+                googleMapsUrl += `&waypoints=${waypoints.join('|')}`;
+            }
 
-            route.forEach((address, index) => {
-                const encodedAddress = encodeURIComponent(address);
-                
-                // יצירת הקישורים ל-Waze וגוגל מפס
-                const wazeUrl = `waze://?q=${encodedAddress}&navigate=yes`;
-                const googleMapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodedAddress}`;
-
-                const card = document.createElement('div');
-                card.className = 'bg-white p-4 rounded-xl shadow-sm border-r-4 border-blue-500 flex flex-col justify-between gap-3';
-                
-                card.innerHTML = `
-                    <div class="flex items-center gap-2">
-                        <span class="bg-blue-600 text-white w-6 h-6 rounded-full flex items-center justify-center text-sm font-bold">${index + 1}</span>
-                        <p class="font-medium text-gray-800">${address}</p>
-                    </div>
-                    <div class="flex gap-2 justify-end">
-                        <a href="${wazeUrl}" class="bg-cyan-500 text-white px-3 py-1.5 rounded-lg text-sm font-bold flex items-center gap-1 hover:bg-cyan-600">
-                            <i class="fab fa-waze"></i> Waze
-                        </a>
-                        <a href="${googleMapsUrl}" target="_blank" class="bg-red-500 text-white px-3 py-1.5 rounded-lg text-sm font-bold flex items-center gap-1 hover:bg-red-600">
-                            <i class="fas fa-map-marker-alt"></i> Google Maps
-                        </a>
-                    </div>
-                `;
-                listDiv.appendChild(card);
-            });
-
-            resultDiv.classList.remove('hidden');
-            resultDiv.scrollIntoView({ behavior: 'smooth' });
+            // פתיחת המסלול המלא ישירות באפליקציה בטלפון
+            window.open(googleMapsUrl, '_blank');
         }
     </script>
 </body>
